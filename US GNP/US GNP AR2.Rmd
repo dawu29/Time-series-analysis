@@ -1,0 +1,167 @@
+---
+title: "US GNP AR2"
+author: "Dawu Liu"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r global-options, include=FALSE}
+knitr::opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE)
+```
+
+```{r message = FALSE}
+library(itsmr)
+library(TSA)
+data = read.delim("E:/2021 Fall/STAT 485/data/gnp-47-02D.txt", header = FALSE)
+y = data$V1 - mean(data$V1)
+```
+
+__(b) Use the MLE to fit an AR(2) model.__
+
+&nbsp;
+
+__1. Read in the data__
+
+__(a)__ Plot the data.
+
+```{r fig.width=10,fig.height=5}
+# 1 (a)
+plot(y, type="o", pch=16, col="cadetblue", xlab="Time(quater)", ylab="US GNP (billions)", 
+     main="US GNP from 1947 (first quarter) to 2002 (third quarter) mean corrected")
+```
+
+&nbsp;
+
+__(b)__ Use the plot to make a preliminary assessment of stationarity.
+
+There appears to be a no trend in the data(maybe slightly upward but hard to tell). The variance doesn't vary much, there doesn’t appear to be any periodicity/seasonality. The data might be stationary, or close to stationary.
+
+&nbsp;
+
+__(c)__ Plot the sample acf/pacf.
+
+```{r fig.width=10,fig.height=5}
+# 1 (c)
+par(mar=c(4,4,3,2), mfrow=c(1,2))
+acf.sample = acf(y, lag.max = 40, plot = FALSE)
+plot(acf.sample, ylim=c(-1,1), main="Sample ACF")
+pacf.sample = pacf(y, lag.max = 40, plot = FALSE)
+plot(pacf.sample, ylim=c(-1,1), main="Sample PACF")
+```
+
+&nbsp;
+
+__(d)__ Use the plot to make observations about possible orders of dependency.
+
+We can see the acf decays after lag > 0 in the sample ACF plot. The partial acf cuts off after lag = 2 in the sample PACF plot. After lag =2 , only 2 pacf are beyond the 95% CI. This might indicate the order of dependency is p=2, AR(2).
+
+&nbsp;
+
+__2. Estimate the parameters in the specified model using the specified method.__
+
+```{r}
+# 2 (a) (b)
+ar2 = arima(y, order = c(2,0,0), method = "ML", include.mean = FALSE)
+ar2
+```
+
+__(a)__ Give the estimated coefficients.
+
+The estimated coefficients are: $\hat\phi_1 = 0.3136$, $\hat\phi_2 = 0.1930$, 
+$\hat\sigma^2 =  1457.093$
+
+&nbsp;
+
+__(b)__ Give the value of the AIC or AICC.
+
+The AIC value is 2251.34
+
+&nbsp;
+
+__(c)__ Plot the model and sample acf/pacf.
+
+```{r fig.width=10,fig.height=5}
+# 2 (c)
+ar2model.acf = ARMAacf(ar=c(ar2$coef[1], ar2$coef[2]), lag.max = 40, pacf = FALSE)
+ar2model.pacf = ARMAacf(ar=c(ar2$coef[1],ar2$coef[2]), lag.max = 40, pacf = TRUE)
+
+par(mar=c(4,4,3,2), mfrow=c(1,2))
+
+ar2acf.sample = acf(y, lag.max = 40, plot = FALSE)
+plot(ar2acf.sample, ylim=c(-1,1), lwd = 5, col="cadetblue", main="Sample ACF(Green) Model ACF(Red)")
+points(ar2model.acf[-1], col="red", type="h", lwd = 2)
+
+ar2pacf.sample = pacf(y, lag.max = 40, plot = FALSE)
+plot(ar2pacf.sample, ylim=c(-1,1), lwd = 5, col="cadetblue", main="Sample PACF(Green) Model PACF(Red)")
+points(ar2model.pacf, col="red", type="h", lwd = 2)
+```
+
+&nbsp;
+
+__(d)__ Use the plot from (c) to assess the quality of the model fit.
+
+In (c), the model fits the sample very well in both acf/pacf graphs. Especially the at lag = 1,2,3,4 for ACF and lag = 1,2 for PACF. The model captures all the significance of the sample acf/pacf at the first a few lags. The model is a good fit for the sample.
+
+&nbsp;
+
+__3. Analyze the standardized residuals.__
+
+__(a)__ Plot the standardized residuals.
+
+```{r fig.width=10,fig.height=5}
+# 3 (a)
+ar2resid = rstandard(ar2)
+plot(ar2resid, type="o", pch=15, xlab="Time", ylab="Residuals", main="Standardized Residuals")
+```
+
+&nbsp;
+
+__(b)__ Plot the sample acf/pacf for the standardized residuals.
+
+```{r fig.width=10,fig.height=5}
+# 3 (b)
+par(mar=c(4,4,3,2), mfrow=c(1,2))
+ar2acf.resid = acf(ar2resid, lag.max = 40, plot = TRUE, main="Residual ACF")
+ar2pacf.resid = pacf(ar2resid, lag.max = 40, plot = TRUE, main="Residual PACF")
+```
+
+&nbsp;
+
+__(c)__ Assess the plots for the hypothesis that the residuals are iid.
+
+There is no pattern in the residuals plot. All the residuals acf are within the 95% CI for the acf plot, and only one residual pacf is beyond the 95% CI for the pacf plot at lag > 0. The plots support the hypothesis that residuals being iid.
+
+&nbsp;
+
+__(d)__ Evaluate the Ljung-Box and McLeod-Li statistics and indicate if they support rejection of the
+iid hypothesis.
+
+```{r echo=TRUE}
+#Ljung-Box test
+Box.test(ar2resid, lag = 20, type = "Ljung", fitdf = 0)$p.value
+#McLeod-Li test
+Box.test(ar2resid^2, lag = 20, type = "Ljung", fitdf = 0)$p.value
+```
+
+With lag = 20, the p-values for Ljung-Box and McLeod-Li statistical tests are 0.413954 and 8.019e-08 respectively. LB test fails to reject the iid hypothesis at level 0.05, and ML test supports the rejection of the iid hypothesis at level 0.05. 
+
+&nbsp;
+
+__(e)__ Give a final assessment on the validity of the iid hypothesis.
+
+Plots in b) support the iid hypothesis, one test in d) fails to reject the iid hypothesis while another one
+supports the rejecttion of iid hypothesis. We conclude that the residuals behave like iid noise.
+
+&nbsp;
+
+__4. Use the results to give a summary evaluation about the quality of the fitted model.__
+
+The fitted AR(2) model is a good fit for the data. The model acf/pacf fit really well with the sample acf/pacf. Only one test (ML) rejects the hypothesis of residuals being iid. This AR(2) model is clearly an improvement over the MA(2) model.
+
+&nbsp;
+
+The next method starts next page.
+
+```{r ref.label=knitr::all_labels(), echo=TRUE, eval=FALSE}
+```
